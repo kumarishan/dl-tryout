@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm, trange
 
 
-class Autoencoder:
-  """Simple Autoencoder"""
+class DenoisingAutoencoder:
+  """Simple Denoising Autoencoder"""
 
   def __init__(self, input_size, hidden_dims=[512, 256, 64], learning_rate=0.001,
                loss_type='squared', activation_fn=tf.nn.tanh, model_dir='./'):
@@ -34,6 +34,10 @@ class Autoencoder:
     self.model_dir = model_dir
 
     self._build()
+
+  def _corrupt(self, x):
+    return tf.mul(x, tf.cast(tf.random_uniform(shape=tf.shape(x), minval=0, maxval=2,
+                                               dtype=tf.int32), tf.float32))
 
   def _create_loss_layer(self, x, y):
     """Create Loss Layer
@@ -98,12 +102,15 @@ class Autoencoder:
   def _build(self):
     """Builds the Autoencoder network"""
     self.x = tf.placeholder(tf.float32, [None, self.input_size], name='x')
-    weights, self.z = self._create_encoder_network(self.x)
+    self.corrupt_prob = tf.placeholder(tf.float32, [1], name='corrupt_prob')
+    self.x_corrupt = self._corrupt(self.x) * self.corrupt_prob + self.x * (1 - self.corrupt_prob)
+
+    weights, self.z = self._create_encoder_network(self.x_corrupt)
     self.y = self._create_decoder_network(self.z, weights[::-1])
     self.recon_loss = self._create_loss_layer(self.x, self.y)
     self.minimize = tf.train.AdamOptimizer(self.learning_rate).minimize(self.recon_loss)
 
-  def fit(self, datasets, x_mean=None, n_epochs=10, batch_size=50, checkpoint_epoch=5):
+  def fit(self, datasets, x_mean=None, n_epochs=10, batch_size=50, checkpoint_epoch=5, corrupt_prob=1.8):
     """Fit dataset
     Args:
       x_mean: np.ndarray. Optional mean of the input
@@ -118,7 +125,8 @@ class Autoencoder:
           x_batch, _ = datasets.train.next_batch(batch_size)
           if x_mean is not None:
             x_batch = np.array([x - x_mean for x in x_batch])
-          _, loss = sess.run([self.minimize, self.recon_loss], feed_dict={self.x: x_batch})
+          _, loss = sess.run([self.minimize, self.recon_loss], feed_dict={self.x: x_batch,
+                                                                          self.corrupt_prob: [corrupt_prob]})
 
         tqdm.write('\nEpoch %d: Loss = %.2f' % (epoch, loss))
 
@@ -128,7 +136,8 @@ class Autoencoder:
             x_test_norm = np.array([x - x_mean for x in x_test])
           else:
             x_test_norm = x_test
-          x_recon_norm = sess.run(self.y, feed_dict={self.x: x_test_norm})
+          x_recon_norm = sess.run(self.y, feed_dict={self.x: x_test_norm,
+                                                     self.corrupt_prob: [0.0]})
 
           if x_mean is not None:
             x_recon = np.array([x + x_mean for x in x_recon_norm])
@@ -148,15 +157,15 @@ if __name__ == '__main__':
   mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
 
   # Using cross entropy, works with softplus actication
-  if not os.path.exists('output/ae_xentropy'):
-    os.makedirs('output/ae_xentropy')
-  ae = Autoencoder(28 * 28, hidden_dims=[256, 64], loss_type='cross_entropy', activation_fn=tf.nn.softplus,
-                   model_dir='./output/ae_xentropy')
-  ae.fit(mnist, n_epochs=10, batch_size=100)
+  if not os.path.exists('output/dae_xentropy'):
+    os.makedirs('output/dae_xentropy')
+  ae = DenoisingAutoencoder(28 * 28, hidden_dims=[256, 64], loss_type='cross_entropy', activation_fn=tf.nn.softplus,
+                            model_dir='./output/dae_xentropy')
+  ae.fit(mnist, n_epochs=50, batch_size=100)
 
   # Using squared loss with tanh activation
-  if not os.path.exists('output/ae_squared'):
-    os.makedirs('output/ae_squared')
-  ae = Autoencoder(28 * 28, hidden_dims=[256, 64], loss_type='squared', activation_fn=tf.nn.tanh,
-                   model_dir='./output/ae_squared')
-  ae.fit(mnist, n_epochs=10, batch_size=50)
+  if not os.path.exists('output/dae_squared'):
+    os.makedirs('output/dae_squared')
+  ae = DenoisingAutoencoder(28 * 28, hidden_dims=[256, 64], loss_type='squared', activation_fn=tf.nn.tanh,
+                   model_dir='./output/dae_squared')
+  ae.fit(mnist, n_epochs=50, batch_size=50)
