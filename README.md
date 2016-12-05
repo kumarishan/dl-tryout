@@ -2,6 +2,12 @@
 
 Consists for Deep Learning implementations in Tensorflow primarily for the purpose of learning.
 
+## How to run
+For example to run highway net just execute this command from root directory
+```shell
+python -m dnn.highway_net
+```
+
 ## Up coming networks
 - Autoencoders
   - Sparse Autoencoders
@@ -18,11 +24,16 @@ Consists for Deep Learning implementations in Tensorflow primarily for the purpo
   - InfoGAN
 
 - Deep Neural Network
-  - Highway Network
   - Dense Netowrk
   - Residual Network
+  - ~~Highway Network~~
   - ~~Simple DNN~~
 
 - Recurrent Neural Network
   - Simple RNN
   - LSTM
+
+- Reinforcement Learning
+  - Deep Q Network
+  - Double DQN
+  - Dueling DQN

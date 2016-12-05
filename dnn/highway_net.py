@@ -12,7 +12,7 @@ import tensorflow.contrib.slim as slim
 import matplotlib.pyplot as plt
 from tqdm import tqdm, trange
 
-from cifar10 import CIFAR10Datasets
+from datasets.cifar10 import CIFAR10Datasets
 
 Highway = namedtuple('Highway', 'n_highways kernel_sz')
 Stride = namedtuple('Stride', 'highway out_ch kernel_sz stride n_repeat')
